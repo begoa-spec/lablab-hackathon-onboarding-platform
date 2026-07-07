@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Outlet } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
@@ -20,11 +20,14 @@ vi.mock("../../pages/WizardPlaceholder", () => ({
 vi.mock("../../pages/HackathonsPlaceholder", () => ({
   default: () => <div data-testid="hackathons-page">Hackathons</div>,
 }));
+vi.mock("../../pages/RegistrationPage", () => ({
+  default: () => <div data-testid="registration-page">Registration</div>,
+}));
 
-// Mock AppLayout
+// Mock AppLayout — must include Outlet so nested routes render
 vi.mock("../AppLayout", () => ({
   default: ({ children }: { children?: ReactNode }) => (
-    <div data-testid="app-layout">{children}</div>
+    <div data-testid="app-layout"><Outlet />{children}</div>
   ),
 }));
 

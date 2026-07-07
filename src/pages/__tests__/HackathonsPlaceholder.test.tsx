@@ -99,6 +99,7 @@ describe("slugify", () => {
         .replace(/[^\w\s-]/g, "")
         .replace(/\s+/g, "-")
         .replace(/-+/g, "-")
+        .replace(/^-+|-+$/g, "")
         .trim();
 
     expect(slugify("AMD AI Hackathon 2025")).toBe("amd-ai-hackathon-2025");
@@ -169,15 +170,8 @@ describe("HackathonsPlaceholder", () => {
 
     const linksChain = createChain();
     linksChain.select = vi.fn(() => linksChain);
-    linksChain.eq = vi.fn(() => linksChain);
+    linksChain.eq = vi.fn(() => Promise.resolve({ data: [], error: null }));
     linksChain.in = vi.fn(() => linksChain);
-    linksChain.then = vi.fn((onfulfilled?: unknown) => {
-      return Promise.resolve(
-        typeof onfulfilled === "function"
-          ? onfulfilled({ data: [], error: null })
-          : { data: [], error: null }
-      );
-    });
 
     mockFrom.mockImplementation((table: string) => {
       if (table === "organizers") return organizerChain;
@@ -210,15 +204,8 @@ describe("HackathonsPlaceholder", () => {
 
     const linksChain = createChain();
     linksChain.select = vi.fn(() => linksChain);
-    linksChain.eq = vi.fn(() => linksChain);
+    linksChain.eq = vi.fn(() => Promise.resolve({ data: [{ hackathon_id: "hack-1" }], error: null }));
     linksChain.in = vi.fn(() => linksChain);
-    linksChain.then = vi.fn((onfulfilled?: unknown) => {
-      return Promise.resolve(
-        typeof onfulfilled === "function"
-          ? onfulfilled({ data: [{ hackathon_id: "hack-1" }], error: null })
-          : { data: [{ hackathon_id: "hack-1" }], error: null }
-      );
-    });
 
     const hackathonsChain = createChain({
       order: {

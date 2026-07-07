@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
@@ -79,9 +79,9 @@ describe("AppLayout", () => {
     const AppLayout = (await import("../AppLayout")).default;
     renderWithRouter(<AppLayout />);
 
-    expect(screen.getByText("Onboarding")).toBeInTheDocument();
-    expect(screen.getByText("LabLab")).toBeInTheDocument();
-    expect(screen.getByText("Sign Out")).toBeInTheDocument();
+    expect(screen.getAllByText("Onboarding")).toHaveLength(2); // desktop sidebar + mobile drawer
+    expect(screen.getAllByText("LabLab")).toHaveLength(2);
+    expect(screen.getAllByText("Sign Out")).toHaveLength(2);
   });
 
   it("renders sidebar with organizer navigation", async () => {
@@ -94,8 +94,8 @@ describe("AppLayout", () => {
     const AppLayout = (await import("../AppLayout")).default;
     renderWithRouter(<AppLayout />);
 
-    expect(screen.getByText("Dashboard")).toBeInTheDocument();
-    expect(screen.getByText("Hackathons")).toBeInTheDocument();
+    expect(screen.getAllByText("Dashboard")).toHaveLength(2); // desktop sidebar + mobile drawer
+    expect(screen.getAllByText("Hackathons")).toHaveLength(2);
   });
 
   it("calls signOut when clicking sign out button", async () => {
@@ -111,7 +111,9 @@ describe("AppLayout", () => {
     const AppLayout = (await import("../AppLayout")).default;
     renderWithRouter(<AppLayout />);
 
-    const signOutBtn = screen.getByRole("button", { name: /sign out/i });
+    // Scope to desktop sidebar to avoid duplicate buttons (mobile drawer + mobile header)
+    const desktopSidebar = screen.getByLabelText("Sidebar navigation");
+    const signOutBtn = within(desktopSidebar).getByRole("button", { name: /sign out/i });
     await user.click(signOutBtn);
 
     expect(mockSignOut).toHaveBeenCalled();

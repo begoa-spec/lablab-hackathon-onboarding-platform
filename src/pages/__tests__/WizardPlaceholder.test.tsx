@@ -210,7 +210,7 @@ describe("WizardPlaceholder", () => {
 
     const welcome = await screen.findByText(/welcome, test user/i);
     expect(welcome).toBeInTheDocument();
-    expect(screen.getByText(/amd cloud account/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/amd cloud account/i).length).toBeGreaterThanOrEqual(2);
   });
 
   it("shows all set state when all steps completed", async () => {

@@ -193,15 +193,8 @@ describe("DashboardPlaceholder", () => {
 
     const linksChain = createChain();
     linksChain.select = vi.fn(() => linksChain);
-    linksChain.eq = vi.fn(() => linksChain);
+    linksChain.eq = vi.fn(() => Promise.resolve({ data: [], error: null }));
     linksChain.in = vi.fn(() => linksChain);
-    linksChain.then = vi.fn((onfulfilled?: unknown) => {
-      return Promise.resolve(
-        typeof onfulfilled === "function"
-          ? onfulfilled({ data: [], error: null })
-          : { data: [], error: null }
-      );
-    });
 
     mockFrom.mockImplementation((table: string) => {
       if (table === "organizers") return organizerChain;
@@ -234,15 +227,8 @@ describe("DashboardPlaceholder", () => {
 
     const linksChain = createChain();
     linksChain.select = vi.fn(() => linksChain);
-    linksChain.eq = vi.fn(() => linksChain);
+    linksChain.eq = vi.fn(() => Promise.resolve({ data: [{ hackathon_id: "hack-1" }], error: null }));
     linksChain.in = vi.fn(() => linksChain);
-    linksChain.then = vi.fn((onfulfilled?: unknown) => {
-      return Promise.resolve(
-        typeof onfulfilled === "function"
-          ? onfulfilled({ data: [{ hackathon_id: "hack-1" }], error: null })
-          : { data: [{ hackathon_id: "hack-1" }], error: null }
-      );
-    });
 
     const hackathonsChain = createChain({
       order: { data: [{ id: "hack-1", name: "Test Hackathon", slug: "test-hack", start_date: null, end_date: null, github_org: null, discord_server_id: null, welcome_message: null, created_at: "2024-01-01T00:00:00Z" }], error: null },
@@ -289,15 +275,8 @@ describe("DashboardPlaceholder", () => {
 
     const linksChain = createChain();
     linksChain.select = vi.fn(() => linksChain);
-    linksChain.eq = vi.fn(() => linksChain);
+    linksChain.eq = vi.fn(() => Promise.resolve({ data: [{ hackathon_id: "hack-1" }], error: null }));
     linksChain.in = vi.fn(() => linksChain);
-    linksChain.then = vi.fn((onfulfilled?: unknown) => {
-      return Promise.resolve(
-        typeof onfulfilled === "function"
-          ? onfulfilled({ data: [{ hackathon_id: "hack-1" }], error: null })
-          : { data: [{ hackathon_id: "hack-1" }], error: null }
-      );
-    });
 
     const hackathonsChain = createChain({
       order: { data: [{ id: "hack-1", name: "Test Hack", slug: "test-hack", start_date: null, end_date: null, github_org: null, discord_server_id: null, welcome_message: null, created_at: "2024-01-01T00:00:00Z" }], error: null },
