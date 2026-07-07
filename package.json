@@ -7,23 +7,31 @@
     "dev": "vite optimize --force && vite",
     "build": "vite build",
     "preview": "vite preview",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint . --ext ts,tsx --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@eslint/js": "^10.0.1",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.110.0",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-query": "^5.101.2",
     "@types/papaparse": "^5.5.2",
+    "eslint": "^10.6.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
     "lucide-react": "^1.23.0",
     "papaparse": "^5.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-icons": "^5.7.0",
     "react-router-dom": "^7.18.1",
-    "tailwindcss": "^4.1.18"
+    "tailwindcss": "^4.1.18",
+    "typescript-eslint": "^8.63.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",

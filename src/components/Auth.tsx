@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { APP_NAME, APP_TAGLINE } from "../lib/config";
-import { Loader2 } from "lucide-react";
+import { Loader2, Users, ShieldCheck } from "lucide-react";
 import { SiGithub } from "react-icons/si";
 
 type AuthView = "signin" | "signup";
@@ -196,7 +196,17 @@ export default function Auth() {
                   : "bg-background text-foreground/50 border-border"
               }`}
             >
-              {role === "organizer" ? "🎤 Organizer" : "🤝 Participant"}
+              {role === "organizer" ? (
+                <>
+                  <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
+                  Organizer
+                </>
+              ) : (
+                <>
+                  <Users className="w-3.5 h-3.5" aria-hidden="true" />
+                  Participant
+                </>
+              )}
             </span>
           </div>
 
@@ -296,7 +306,7 @@ export default function Auth() {
             ? "Organizers can create and manage hackathons."
             : "By signing in, you agree to participate in the hackathon."}
           <br />
-          {role === "participant" && "Contact your organizer if you don't have access."}
+          {role === "participant" && "After signing up, you can register for an open hackathon."}
         </p>
       </div>
     </div>

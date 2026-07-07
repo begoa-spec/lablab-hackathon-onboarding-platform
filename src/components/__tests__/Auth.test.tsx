@@ -4,22 +4,25 @@ import userEvent from "@testing-library/user-event";
 import { APP_NAME, APP_TAGLINE } from "../../lib/config";
 
 // Mock supabase
-const mockSignInWithOtp = vi.fn();
 const mockSignInWithPassword = vi.fn();
+const mockSignUp = vi.fn();
 const mockSignInWithOAuth = vi.fn();
+const mockUpsert = vi.fn();
 
 vi.mock("../../lib/supabase", () => ({
   supabase: {
     auth: {
-      signInWithOtp: (...args: unknown[]) => mockSignInWithOtp(...args),
       signInWithPassword: (...args: unknown[]) =>
         mockSignInWithPassword(...args),
+      signUp: (...args: unknown[]) => mockSignUp(...args),
       signInWithOAuth: (...args: unknown[]) => mockSignInWithOAuth(...args),
     },
+    from: () => ({
+      upsert: (...args: unknown[]) => mockUpsert(...args),
+    }),
   },
 }));
 
-// Need to mock config too since imports are cached
 vi.mock("../../lib/config", () => ({
   APP_NAME: "LabLab Onboarding",
   APP_TAGLINE: "Get ready to build",
@@ -27,6 +30,7 @@ vi.mock("../../lib/config", () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  sessionStorage.clear();
 });
 
 describe("Auth", () => {
@@ -38,114 +42,67 @@ describe("Auth", () => {
     expect(screen.getByText(APP_TAGLINE)).toBeInTheDocument();
   });
 
-  it("shows magic link form by default", async () => {
+  it("shows email and password inputs", async () => {
     const Auth = (await import("../Auth")).default;
     render(<Auth />);
 
     expect(
       screen.getByPlaceholderText("you@example.com")
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /send magic link/i })
-    ).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Password")).toBeInTheDocument();
   });
 
-  it("switches to password mode when clicking Password tab", async () => {
+  it("shows Sign In and Sign Up tabs with Sign In active by default", async () => {
+    const Auth = (await import("../Auth")).default;
+    render(<Auth />);
+
+    const signInTab = screen.getByRole("button", { name: "Sign In" });
+    const signUpTab = screen.getByRole("button", { name: "Sign Up" });
+
+    expect(signInTab).toHaveAttribute("aria-pressed", "true");
+    expect(signUpTab).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("switches to Sign Up tab", async () => {
     const user = userEvent.setup();
     const Auth = (await import("../Auth")).default;
     render(<Auth />);
 
-    const passwordTab = screen.getByRole("button", { name: /password/i });
-    await user.click(passwordTab);
+    const signUpTab = screen.getByRole("button", { name: "Sign Up" });
+    await user.click(signUpTab);
 
-    expect(
-      screen.getByPlaceholderText("Password")
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /sign in/i })
-    ).toBeInTheDocument();
+    expect(signUpTab).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("calls signInWithOtp on magic link submit", async () => {
+  it("shows Participant role by default", async () => {
+    const Auth = (await import("../Auth")).default;
+    render(<Auth />);
+
+    expect(screen.getByText("Participant")).toBeInTheDocument();
+    expect(screen.queryByText("Organizer")).not.toBeInTheDocument();
+  });
+
+  it("toggles to Organizer role", async () => {
     const user = userEvent.setup();
-    mockSignInWithOtp.mockResolvedValue({ error: null });
+    const Auth = (await import("../Auth")).default;
+    render(<Auth />);
+
+    const toggleBtn = screen.getByText("I am an organizer");
+    await user.click(toggleBtn);
+
+    expect(screen.getByText("Organizer")).toBeInTheDocument();
+    expect(screen.queryByText("Participant")).not.toBeInTheDocument();
+  });
+
+  it("calls signInWithPassword on Sign In submit", async () => {
+    const user = userEvent.setup();
+    mockSignInWithPassword.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
 
     const Auth = (await import("../Auth")).default;
     render(<Auth />);
 
-    const emailInput = screen.getByPlaceholderText("you@example.com");
-    const submitBtn = screen.getByRole("button", {
-      name: /send magic link/i,
-    });
-
-    await user.type(emailInput, "test@example.com");
-    await user.click(submitBtn);
-
-    expect(mockSignInWithOtp).toHaveBeenCalledWith({
-      email: "test@example.com",
-      options: {
-        emailRedirectTo: window.location.origin,
-      },
-    });
-  });
-
-  it("shows success message after magic link sent", async () => {
-    const user = userEvent.setup();
-    mockSignInWithOtp.mockResolvedValue({ error: null });
-
-    const Auth = (await import("../Auth")).default;
-    render(<Auth />);
-
-    const emailInput = screen.getByPlaceholderText("you@example.com");
-    const submitBtn = screen.getByRole("button", {
-      name: /send magic link/i,
-    });
-
-    await user.type(emailInput, "test@example.com");
-    await user.click(submitBtn);
-
-    expect(
-      screen.getByText(/magic link sent/i)
-    ).toBeInTheDocument();
-  });
-
-  it("shows error message when magic link fails", async () => {
-    const user = userEvent.setup();
-    mockSignInWithOtp.mockResolvedValue({
-      error: { message: "Rate limit exceeded" },
-    });
-
-    const Auth = (await import("../Auth")).default;
-    render(<Auth />);
-
-    const emailInput = screen.getByPlaceholderText("you@example.com");
-    const submitBtn = screen.getByRole("button", {
-      name: /send magic link/i,
-    });
-
-    await user.type(emailInput, "test@example.com");
-    await user.click(submitBtn);
-
-    expect(screen.getByText("Rate limit exceeded")).toBeInTheDocument();
-  });
-
-  it("calls signInWithPassword on password sign in", async () => {
-    const user = userEvent.setup();
-    mockSignInWithPassword.mockResolvedValue({ error: null });
-    mockSignInWithOtp.mockResolvedValue({ error: null });
-
-    const Auth = (await import("../Auth")).default;
-    render(<Auth />);
-
-    // Switch to password mode
-    const passwordTab = screen.getByRole("button", { name: /password/i });
-    await user.click(passwordTab);
-
-    const emailInput = screen.getByPlaceholderText("you@example.com");
-    const passwordInput = screen.getByPlaceholderText("Password");
-
-    await user.type(emailInput, "test@example.com");
-    await user.type(passwordInput, "mypassword");
+    await user.type(screen.getByPlaceholderText("you@example.com"), "test@example.com");
+    await user.type(screen.getByPlaceholderText("Password"), "mypassword");
 
     const signInBtn = screen.getByRole("button", { name: /sign in/i });
     await user.click(signInBtn);
@@ -159,20 +116,14 @@ describe("Auth", () => {
   it("shows error on invalid password credentials", async () => {
     const user = userEvent.setup();
     mockSignInWithPassword.mockResolvedValue({
+      data: null,
       error: { message: "Invalid login credentials" },
     });
 
     const Auth = (await import("../Auth")).default;
     render(<Auth />);
 
-    // Switch to password mode
-    const passwordTab = screen.getByRole("button", { name: /password/i });
-    await user.click(passwordTab);
-
-    await user.type(
-      screen.getByPlaceholderText("you@example.com"),
-      "test@example.com"
-    );
+    await user.type(screen.getByPlaceholderText("you@example.com"), "test@example.com");
     await user.type(screen.getByPlaceholderText("Password"), "wrongpass");
 
     await user.click(screen.getByRole("button", { name: /sign in/i }));
@@ -182,14 +133,103 @@ describe("Auth", () => {
     ).toBeInTheDocument();
   });
 
-  it("disables submit button when email is empty", async () => {
+  it("shows generic error message from supabase", async () => {
+    const user = userEvent.setup();
+    mockSignInWithPassword.mockResolvedValue({
+      data: null,
+      error: { message: "Email not confirmed" },
+    });
+
     const Auth = (await import("../Auth")).default;
     render(<Auth />);
 
-    const submitBtn = screen.getByRole("button", {
-      name: /send magic link/i,
+    await user.type(screen.getByPlaceholderText("you@example.com"), "test@example.com");
+    await user.type(screen.getByPlaceholderText("Password"), "pass");
+
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+
+    expect(screen.getByText("Email not confirmed")).toBeInTheDocument();
+  });
+
+  it("calls signUp on Sign Up submit", async () => {
+    const user = userEvent.setup();
+    mockSignUp.mockResolvedValue({ data: { user: null }, error: null });
+
+    const Auth = (await import("../Auth")).default;
+    render(<Auth />);
+
+    // Switch to sign up
+    await user.click(screen.getByRole("button", { name: "Sign Up" }));
+
+    await user.type(screen.getByPlaceholderText("you@example.com"), "new@example.com");
+    await user.type(screen.getByPlaceholderText("Password"), "password");
+
+    const createBtn = screen.getByRole("button", { name: /create account/i });
+    await user.click(createBtn);
+
+    expect(mockSignUp).toHaveBeenCalledWith({
+      email: "new@example.com",
+      password: "password",
+      options: {
+        emailRedirectTo: window.location.origin,
+      },
+    });
+  });
+
+  it("shows confirmation message after sign up when email confirmation needed", async () => {
+    const user = userEvent.setup();
+    // User exists but no session = confirmation required
+    mockSignUp.mockResolvedValue({
+      data: { user: { id: "u1" }, session: null },
+      error: null,
     });
 
+    const Auth = (await import("../Auth")).default;
+    render(<Auth />);
+
+    await user.click(screen.getByRole("button", { name: "Sign Up" }));
+    await user.type(screen.getByPlaceholderText("you@example.com"), "new@example.com");
+    await user.type(screen.getByPlaceholderText("Password"), "password");
+
+    await user.click(screen.getByRole("button", { name: /create account/i }));
+
+    expect(
+      screen.getByText(/check your email for a confirmation link/i)
+    ).toBeInTheDocument();
+  });
+
+  it("signs up and immediately creates organizer record for organizer role", async () => {
+    const user = userEvent.setup();
+    mockSignUp.mockResolvedValue({
+      data: { user: { id: "u1", email: "org@test.com" }, session: { access_token: "tok" } },
+      error: null,
+    });
+    mockUpsert.mockResolvedValue({ data: null, error: null });
+
+    const Auth = (await import("../Auth")).default;
+    render(<Auth />);
+
+    // Switch to organizer
+    await user.click(screen.getByText("I am an organizer"));
+    // Switch to sign up
+    await user.click(screen.getByRole("button", { name: "Sign Up" }));
+
+    await user.type(screen.getByPlaceholderText("you@example.com"), "org@test.com");
+    await user.type(screen.getByPlaceholderText("Password"), "password");
+
+    await user.click(screen.getByRole("button", { name: /create organizer account/i }));
+
+    expect(mockUpsert).toHaveBeenCalledWith(
+      { auth_user_id: "u1", email: "org@test.com" },
+      { onConflict: "auth_user_id" }
+    );
+  });
+
+  it("disables submit button when email or password is empty", async () => {
+    const Auth = (await import("../Auth")).default;
+    render(<Auth />);
+
+    const submitBtn = screen.getByRole("button", { name: /sign in/i });
     expect(submitBtn).toBeDisabled();
   });
 
@@ -225,6 +265,66 @@ describe("Auth", () => {
 
     expect(
       screen.getByText("OAuth provider error")
+    ).toBeInTheDocument();
+  });
+
+  it("stores pending_role in sessionStorage when signing in as organizer via GitHub", async () => {
+    const user = userEvent.setup();
+    mockSignInWithOAuth.mockResolvedValue({ error: null });
+
+    const Auth = (await import("../Auth")).default;
+    render(<Auth />);
+
+    // Switch to organizer
+    await user.click(screen.getByText("I am an organizer"));
+
+    const githubBtn = screen.getByRole("button", { name: /github/i });
+    await user.click(githubBtn);
+
+    expect(sessionStorage.getItem("pending_role")).toBe("organizer");
+  });
+
+  it("calls upsert organizer after successful password sign-in as organizer", async () => {
+    const user = userEvent.setup();
+    mockSignInWithPassword.mockResolvedValue({
+      data: { user: { id: "u1", email: "org@test.com" } },
+      error: null,
+    });
+    mockUpsert.mockResolvedValue({ data: null, error: null });
+
+    const Auth = (await import("../Auth")).default;
+    render(<Auth />);
+
+    // Switch to organizer
+    await user.click(screen.getByText("I am an organizer"));
+
+    await user.type(screen.getByPlaceholderText("you@example.com"), "org@test.com");
+    await user.type(screen.getByPlaceholderText("Password"), "password");
+
+    await user.click(screen.getByRole("button", { name: /sign in as organizer/i }));
+
+    expect(mockSignInWithPassword).toHaveBeenCalled();
+    expect(mockUpsert).toHaveBeenCalled();
+  });
+
+  it("shows Participant-specific footer text", async () => {
+    const Auth = (await import("../Auth")).default;
+    render(<Auth />);
+
+    expect(
+      screen.getByText(/by signing in, you agree to participate/i)
+    ).toBeInTheDocument();
+  });
+
+  it("shows Organizer-specific footer text after toggle", async () => {
+    const user = userEvent.setup();
+    const Auth = (await import("../Auth")).default;
+    render(<Auth />);
+
+    await user.click(screen.getByText("I am an organizer"));
+
+    expect(
+      screen.getByText(/organizers can create and manage hackathons/i)
     ).toBeInTheDocument();
   });
 });

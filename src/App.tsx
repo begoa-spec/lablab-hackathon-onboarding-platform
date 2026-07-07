@@ -5,6 +5,7 @@ import AppLayout from "./components/AppLayout";
 import DashboardPlaceholder from "./pages/DashboardPlaceholder";
 import WizardPlaceholder from "./pages/WizardPlaceholder";
 import HackathonsPlaceholder from "./pages/HackathonsPlaceholder";
+import RegistrationPage from "./pages/RegistrationPage";
 import { Loader2 } from "lucide-react";
 import { supabase } from "./lib/supabase";
 
@@ -29,9 +30,9 @@ function ProtectedRoute({
     return <Navigate to="/" replace />;
   }
 
-  // Unknown role: send back to auth
+  // Unknown role: send to registration
   if (auth.role === "unknown") {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/register" replace />;
   }
 
   if (allowedRole && auth.role !== allowedRole) {
@@ -85,7 +86,7 @@ export default function App() {
             ) : auth.role === "participant" ? (
               <Navigate to="/wizard" replace />
             ) : (
-              <NoAccess userEmail={auth.user?.email} />
+              <Navigate to="/register" replace />
             )
           ) : auth.status === "unauthenticated" ? (
             <Auth />
@@ -96,6 +97,9 @@ export default function App() {
           )
         }
       />
+
+      {/* Registration route — accessible to any authenticated user */}
+      <Route path="/register" element={<RegistrationPage />} />
 
       {/* Authenticated routes wrapped in AppLayout */}
       <Route
