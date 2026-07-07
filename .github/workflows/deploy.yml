@@ -32,24 +32,19 @@ jobs:
           vercel pull \
             --yes \
             --environment=production \
-            --token=${{ env.VERCEL_TOKEN }} \
             --scope=${{ env.VERCEL_TEAM_ID }}
 
       - name: Build project artifacts
         run: |
           vercel build \
-            ${{ github.ref == 'refs/heads/main' && '--prod' || '' }} \
-            --token=${{ env.VERCEL_TOKEN }} \
-            --scope=${{ env.VERCEL_TEAM_ID }}
+            ${{ github.ref == 'refs/heads/main' && '--prod' || '' }}
 
       - name: Deploy to Vercel
         id: deploy
         run: |
           URL=$(vercel deploy \
             --prebuilt \
-            ${{ github.ref == 'refs/heads/main' && '--prod' || '' }} \
-            --token=${{ env.VERCEL_TOKEN }} \
-            --scope=${{ env.VERCEL_TEAM_ID }})
+            ${{ github.ref == 'refs/heads/main' && '--prod' || '' }})
           echo "url=$URL" >> $GITHUB_OUTPUT
 
       - name: Comment preview URL on PR
