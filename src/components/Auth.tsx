@@ -5,11 +5,13 @@ import { Loader2 } from "lucide-react";
 import { SiGithub } from "react-icons/si";
 
 type AuthView = "signin" | "signup";
+type AuthRole = "participant" | "organizer";
 
 export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [view, setView] = useState<AuthView>("signin");
+  const [role, setRole] = useState<AuthRole>("participant");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{
     type: "success" | "error";
@@ -23,7 +25,7 @@ export default function Auth() {
     setLoading(true);
     setMessage(null);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     });
@@ -36,6 +38,16 @@ export default function Auth() {
             ? "Wrong email or password. Try again."
             : error.message,
       });
+      setLoading(false);
+      return;
+    }
+
+    // If signing in as organizer, ensure they have an organizers record
+    if (role === "organizer" && data.user) {
+      await supabase.from("organizers").upsert(
+        { auth_user_id: data.user.id, email: data.user.email },
+        { onConflict: "auth_user_id" }
+      );
     }
     setLoading(false);
   }
@@ -58,17 +70,34 @@ export default function Auth() {
     if (error) {
       setMessage({ type: "error", text: error.message });
     } else if (data?.user && !data?.session) {
-      // User already exists but isn't logged in
-      setMessage({
-        type: "error",
-        text: "An account with this email already exists. Try signing in instead.",
-      });
-    } else {
+      // User already exists but isn't logged in (or confirmation required)
+      // If signing up as organizer, pre-create the organizers record by email
+      if (role === "organizer") {
+        await supabase.from("organizers").upsert(
+          { email: email.trim() },
+          { onConflict: "email" }
+        );
+      }
       setMessage({
         type: "success",
-        text: "Check your email for a confirmation link to complete sign up.",
+        text:
+          role === "organizer"
+            ? "Check your email for a confirmation link. Once confirmed, you'll be recognized as an organizer."
+            : "Check your email for a confirmation link to complete sign up.",
       });
       setView("signin");
+    } else if (data?.user && data?.session) {
+      // No email confirmation needed — session was created immediately
+      if (role === "organizer") {
+        await supabase.from("organizers").upsert(
+          { auth_user_id: data.user.id, email: data.user.email },
+          { onConflict: "auth_user_id" }
+        );
+      }
+      setMessage({
+        type: "success",
+        text: "Account created! Welcome aboard.",
+      });
     }
     setLoading(false);
   }
@@ -76,6 +105,11 @@ export default function Auth() {
   async function handleGithubOAuth() {
     setLoading(true);
     setMessage(null);
+
+    // Store the intended role so useAuth can pick it up after redirect
+    if (role === "organizer") {
+      sessionStorage.setItem("pending_role", "organizer");
+    }
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "github",
@@ -85,10 +119,16 @@ export default function Auth() {
     });
 
     if (error) {
+      sessionStorage.removeItem("pending_role");
       setMessage({ type: "error", text: error.message });
       setLoading(false);
     }
-    // OAuth redirects away, no need to set loading false
+    // OAuth redirects away — no need to set loading false
+  }
+
+  function toggleRole() {
+    setRole((prev) => (prev === "participant" ? "organizer" : "participant"));
+    setMessage(null);
   }
 
   return (
@@ -129,7 +169,10 @@ export default function Auth() {
                   ? "bg-accent text-black shadow-sm"
                   : "text-foreground/60 hover:text-foreground"
               }`}
-              onClick={() => { setView("signin"); setMessage(null); }}
+              onClick={() => {
+                setView("signin");
+                setMessage(null);
+              }}
               aria-pressed={view === "signin"}
             >
               Sign In
@@ -141,11 +184,27 @@ export default function Auth() {
                   ? "bg-accent text-black shadow-sm"
                   : "text-foreground/60 hover:text-foreground"
               }`}
-              onClick={() => { setView("signup"); setMessage(null); }}
+              onClick={() => {
+                setView("signup");
+                setMessage(null);
+              }}
               aria-pressed={view === "signup"}
             >
               Sign Up
             </button>
+          </div>
+
+          {/* Role Badge */}
+          <div className="mb-4 flex items-center justify-center gap-2">
+            <span
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-all duration-150 ${
+                role === "organizer"
+                  ? "bg-accent/10 text-accent border-accent/20"
+                  : "bg-background text-foreground/50 border-border"
+              }`}
+            >
+              {role === "organizer" ? "🎤 Organizer" : "🤝 Participant"}
+            </span>
           </div>
 
           {/* Email / Password Form */}
@@ -192,7 +251,13 @@ export default function Auth() {
               {loading ? (
                 <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
               ) : null}
-              {view === "signin" ? "Sign In" : "Create Account"}
+              {view === "signin"
+                ? role === "organizer"
+                  ? "Sign In as Organizer"
+                  : "Sign In"
+                : role === "organizer"
+                  ? "Create Organizer Account"
+                  : "Create Account"}
             </button>
           </form>
 
@@ -218,12 +283,27 @@ export default function Auth() {
             <SiGithub className="w-5 h-5" aria-hidden="true" />
             <span className="font-medium">GitHub</span>
           </button>
+
+          {/* Role Toggle */}
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={toggleRole}
+              className="text-sm text-accent hover:text-accent/80 underline underline-offset-2 transition-colors duration-150 cursor-pointer"
+            >
+              {role === "participant"
+                ? "I am an organizer"
+                : "I am a participant"}
+            </button>
+          </div>
         </div>
 
         <p className="mt-6 text-center text-xs text-foreground/40">
-          By signing in, you agree to participate in the hackathon.
+          {role === "organizer"
+            ? "Organizers can create and manage hackathons."
+            : "By signing in, you agree to participate in the hackathon."}
           <br />
-          Contact your organizer if you don't have access.
+          {role === "participant" && "Contact your organizer if you don't have access."}
         </p>
       </div>
     </div>

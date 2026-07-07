@@ -19,6 +19,7 @@ export function useAuth() {
         setState({ status: "unauthenticated" });
         return;
       }
+      await handlePendingRole(session.user.id, session.user.email ?? "");
       const role = await resolveRole(session.user.id, session.user.email ?? "");
       setState({ status: "authenticated", user: session.user, role });
     });
@@ -31,6 +32,7 @@ export function useAuth() {
         setState({ status: "unauthenticated" });
         return;
       }
+      await handlePendingRole(session.user.id, session.user.email ?? "");
       const role = await resolveRole(session.user.id, session.user.email ?? "");
       setState({ status: "authenticated", user: session.user, role });
     });
@@ -39,6 +41,20 @@ export function useAuth() {
   }, []);
 
   return state;
+}
+
+/**
+ * Check if the user chose "organizer" before an OAuth redirect (stored in sessionStorage).
+ * If so, upsert an organizers record for them.
+ */
+async function handlePendingRole(authUserId: string, email: string) {
+  const pendingRole = sessionStorage.getItem("pending_role");
+  if (pendingRole === "organizer") {
+    sessionStorage.removeItem("pending_role");
+    await supabase
+      .from("organizers")
+      .upsert({ auth_user_id: authUserId, email }, { onConflict: "auth_user_id" });
+  }
 }
 
 async function resolveRole(
@@ -53,6 +69,24 @@ async function resolveRole(
     .maybeSingle();
 
   if (organizer) return "organizer";
+
+  // Also check if their email matches an organizer record (pre-created via sign-up or import)
+  if (!organizer) {
+    const { data: matched } = await supabase
+      .from("organizers")
+      .select("id")
+      .eq("email", email)
+      .maybeSingle();
+
+    if (matched) {
+      // Link the auth user ID to the organizer record
+      await supabase
+        .from("organizers")
+        .update({ auth_user_id: authUserId })
+        .eq("id", matched.id);
+      return "organizer";
+    }
+  }
 
   // Check if user is a participant
   const { data: participant } = await supabase
