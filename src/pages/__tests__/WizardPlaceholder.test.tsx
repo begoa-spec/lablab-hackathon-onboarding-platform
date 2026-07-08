@@ -7,11 +7,13 @@ const EXPECTED_STEP_LABELS = [
   "AMD Cloud Account",
   "Fireworks Promo Code",
   "Natively AI Account",
+  "Join Discord",
+  "Join GitHub",
 ];
 
 /* ── Step keys (must match STEPS array) ──────────────── */
 // These keys must match the STEPS array in WizardPlaceholder
-const EXPECTED_STEP_KEYS: string[] = ["amd", "fireworks", "natively_ai"];
+const EXPECTED_STEP_KEYS: string[] = ["amd", "fireworks", "natively_ai", "discord", "github"];
 
 /* ── Chain builder ──────────────────────────────────── */
 
@@ -103,7 +105,7 @@ async function setupDefaultMocks(participantOverride?: Record<string, unknown>) 
     email: "test@example.com",
     team_id: "team-1",
     hackathon_id: "hack-1",
-    steps_completed: { amd: false, fireworks: false, natively_ai: false },
+    steps_completed: { amd: false, fireworks: false, natively_ai: false, discord: false, github: false },
     auth_user_id: "user-1",
     github_username: null,
     discord_username: null,
@@ -166,7 +168,7 @@ beforeEach(async () => {
 /* ── getStepsCompleted tests ────────────────────────── */
 
 describe("getStepsCompleted helper", () => {
-  it("parses all 3 keys from a valid object", () => {
+  it("parses all 5 keys from a valid object", () => {
     const getStepsCompleted = (raw: unknown) => {
       if (typeof raw === "object" && raw !== null) {
         const r = raw as Record<string, unknown>;
@@ -174,15 +176,17 @@ describe("getStepsCompleted helper", () => {
           amd: Boolean(r.amd),
           fireworks: Boolean(r.fireworks),
           natively_ai: Boolean(r.natively_ai),
+          discord: Boolean(r.discord),
+          github: Boolean(r.github),
         };
       }
-      return { amd: false, fireworks: false, natively_ai: false };
+      return { amd: false, fireworks: false, natively_ai: false, discord: false, github: false };
     };
 
-    const allTrue = { amd: true, fireworks: true, natively_ai: true };
+    const allTrue = { amd: true, fireworks: true, natively_ai: true, discord: true, github: true };
     expect(getStepsCompleted(allTrue)).toEqual(allTrue);
 
-    const allFalse = { amd: false, fireworks: false, natively_ai: false };
+    const allFalse = { amd: false, fireworks: false, natively_ai: false, discord: false, github: false };
     expect(getStepsCompleted(null)).toEqual(allFalse);
     expect(getStepsCompleted(undefined)).toEqual(allFalse);
     expect(getStepsCompleted({})).toEqual(allFalse);
@@ -196,40 +200,44 @@ describe("getStepsCompleted helper", () => {
           amd: Boolean(r.amd),
           fireworks: Boolean(r.fireworks),
           natively_ai: Boolean(r.natively_ai),
+          discord: Boolean(r.discord),
+          github: Boolean(r.github),
         };
       }
-      return { amd: false, fireworks: false, natively_ai: false };
+      return { amd: false, fireworks: false, natively_ai: false, discord: false, github: false };
     };
 
     const partial = getStepsCompleted({ amd: true });
     expect(partial.amd).toBe(true);
     expect(partial.fireworks).toBe(false);
     expect(partial.natively_ai).toBe(false);
+    expect(partial.discord).toBe(false);
+    expect(partial.github).toBe(false);
   });
 });
 
 /* ── Step ordering tests ────────────────────────────── */
 
 describe("WizardPlaceholder — step order", () => {
-  it("shows all 3 step labels plus GitHub & Discord section", async () => {
+  it("shows all 5 step labels plus usernames section", async () => {
     await setupDefaultMocks();
     renderWizard(Wizard);
 
-    // Each of the 3 main step labels should be visible
+    // Each of the 5 step labels should be visible
     for (const label of EXPECTED_STEP_LABELS) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
 
-    // GitHub & Discord section should also be present
-    expect(screen.getByText("GitHub & Discord")).toBeInTheDocument();
+    // Usernames section should also be present
+    expect(screen.getByText("Share Your Usernames")).toBeInTheDocument();
   });
 
-  it("renders step indices 1-3 on the step indicator circles", async () => {
+  it("renders step indices 1-5 on the step indicator circles", async () => {
     await setupDefaultMocks();
     renderWizard(Wizard);
 
-    // Step numbers 1, 2, 3 appear in the status circles
-    for (let i = 1; i <= 3; i++) {
+    // Step numbers 1, 2, 3, 4, 5 appear in the status circles
+    for (let i = 1; i <= 5; i++) {
       const nums = screen.getAllByText(String(i));
       expect(nums.length, `Step number ${i} not found in DOM`).toBeGreaterThanOrEqual(1);
     }
@@ -264,8 +272,13 @@ describe("WizardPlaceholder — step order", () => {
     );
     expect(step1, "Step 1 button should exist").toBeDefined();
 
-    // Steps 2 and 3 should be disabled
-    for (const label of ["Fireworks Promo Code", "Natively AI Account"]) {
+    // Steps 2 through 5 should be disabled
+    for (const label of [
+      "Fireworks Promo Code",
+      "Natively AI Account",
+      "Join Discord",
+      "Join GitHub",
+    ]) {
       const btns = buttons.filter((btn) => btn.textContent?.includes(label));
       btns.forEach((b) => {
         expect(b, `Step "${label}" should be disabled`).toBeDisabled();
@@ -297,14 +310,14 @@ describe("WizardPlaceholder — rendering", () => {
     expect(welcome).toBeInTheDocument();
   });
 
-  it("shows all set state when all 3 steps completed and both usernames filled", async () => {
+  it("shows all set state when all 5 steps completed and both usernames filled", async () => {
     const participant = {
       id: "p-1",
       name: "Test User",
       email: "test@example.com",
       team_id: "team-1",
       hackathon_id: "hack-1",
-      steps_completed: { amd: true, fireworks: true, natively_ai: true },
+      steps_completed: { amd: true, fireworks: true, natively_ai: true, discord: true, github: true },
       auth_user_id: "user-1",
       github_username: "testuser",
       discord_username: "testuser#1234",
@@ -320,7 +333,7 @@ describe("WizardPlaceholder — rendering", () => {
 /* ── Progress indicator tests ───────────────────────── */
 
 describe("WizardPlaceholder — progress indicator", () => {
-  it("has progress dots for all 3 steps", async () => {
+  it("has progress dots for all 5 steps", async () => {
     await setupDefaultMocks();
     renderWizard(Wizard);
 

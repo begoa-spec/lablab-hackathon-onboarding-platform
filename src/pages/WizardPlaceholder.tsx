@@ -21,6 +21,8 @@ type StepsCompleted = {
   amd: boolean;
   fireworks: boolean;
   natively_ai: boolean;
+  discord: boolean;
+  github: boolean;
 };
 
 interface StepDef {
@@ -29,6 +31,8 @@ interface StepDef {
   description: string;
   href?: string;
   hrefLabel?: string;
+  href2?: string;
+  hrefLabel2?: string;
 }
 
 const STEPS: StepDef[] = [
@@ -56,6 +60,24 @@ const STEPS: StepDef[] = [
     href: "https://natively.ai/",
     hrefLabel: "Create Natively AI account",
   },
+  {
+    key: "discord",
+    label: "Join Discord",
+    description:
+      "Join the official hackathon Discord server to communicate with your team and get updates from the organizers.",
+    href: "https://discord.gg/lablab",
+    hrefLabel: "Join Discord Server",
+  },
+  {
+    key: "github",
+    label: "Join GitHub",
+    description:
+      "Create a GitHub account (or sign in) so your team can collaborate on code and the organizer can add you to your team's repo.",
+    href: "https://github.com/signup",
+    hrefLabel: "Create GitHub Account",
+    href2: "https://github.com/login",
+    hrefLabel2: "Sign in to GitHub",
+  },
 ];
 
 /* ── Helpers ────────────────────────────────────────── */
@@ -69,9 +91,11 @@ function getStepsCompleted(
       amd: Boolean(r.amd),
       fireworks: Boolean(r.fireworks),
       natively_ai: Boolean(r.natively_ai),
+      discord: Boolean(r.discord),
+      github: Boolean(r.github),
     };
   }
-  return { amd: false, fireworks: false, natively_ai: false };
+  return { amd: false, fireworks: false, natively_ai: false, discord: false, github: false };
 }
 
 /* ── Step Card ─────────────────────────────────────── */
@@ -180,6 +204,8 @@ export default function WizardPlaceholder() {
     amd: false,
     fireworks: false,
     natively_ai: false,
+    discord: false,
+    github: false,
   });
   const [githubUsername, setGithubUsername] = useState("");
   const [discordUsername, setDiscordUsername] = useState("");
@@ -191,13 +217,13 @@ export default function WizardPlaceholder() {
   const [expandedStep, setExpandedStep] = useState<number | null>(null);
   const [completedMessage, setCompletedMessage] = useState(false);
 
-  // Determine which step is active (first incomplete of the first 3)
+  // Determine which step is active (first incomplete step)
   const firstIncomplete = STEPS.findIndex((s) => !steps[s.key]);
   const currentStepIndex =
     firstIncomplete === -1 ? STEPS.length : firstIncomplete;
 
-  const allThreeDone =
-    steps.amd && steps.fireworks && steps.natively_ai;
+  const allFiveDone =
+    steps.amd && steps.fireworks && steps.natively_ai && steps.discord && steps.github;
   const githubDiscordDone = githubUsername.trim().length > 0 && discordUsername.trim().length > 0;
 
   // Load participant data
@@ -250,10 +276,10 @@ export default function WizardPlaceholder() {
 
   // Show completed message after all steps done
   useEffect(() => {
-    if (allThreeDone && githubDiscordDone) {
+    if (allFiveDone && githubDiscordDone) {
       setCompletedMessage(true);
     }
-  }, [allThreeDone, githubDiscordDone]);
+  }, [allFiveDone, githubDiscordDone]);
 
   /* ── Actions ──────────────────────────────────────── */
 
@@ -625,6 +651,75 @@ export default function WizardPlaceholder() {
                   </div>
                 )}
 
+                {/* Step 4: Discord */}
+                {step.key === "discord" && !isComplete && (
+                  <div className="space-y-3">
+                    <a
+                      href={step.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-sm text-secondary hover:text-secondary/80 transition-colors duration-150 cursor-pointer"
+                    >
+                      <ExternalLink className="w-4 h-4" aria-hidden="true" />
+                      {step.hrefLabel}
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => markStep("discord")}
+                      disabled={saving}
+                      className="w-full flex items-center justify-center gap-2 bg-accent text-white font-medium rounded-xl px-5 py-3 hover:bg-accent/90 active:scale-[0.97] transition-all duration-150 disabled:opacity-50 cursor-pointer"
+                    >
+                      {saving ? (
+                        <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Check className="w-4 h-4" aria-hidden="true" />
+                      )}
+                      I&apos;ve joined — Mark Complete
+                    </button>
+                  </div>
+                )}
+
+                {/* Step 5: GitHub */}
+                {step.key === "github" && !isComplete && (
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap gap-3">
+                      <a
+                        href={step.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-sm text-secondary hover:text-secondary/80 transition-colors duration-150 cursor-pointer"
+                      >
+                        <ExternalLink className="w-4 h-4" aria-hidden="true" />
+                        {step.hrefLabel}
+                      </a>
+                      {step.href2 && step.hrefLabel2 && (
+                        <a
+                          href={step.href2}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 text-sm text-secondary hover:text-secondary/80 transition-colors duration-150 cursor-pointer"
+                        >
+                          <ExternalLink className="w-4 h-4" aria-hidden="true" />
+                          {step.hrefLabel2}
+                        </a>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => markStep("github")}
+                      disabled={saving}
+                      className="w-full flex items-center justify-center gap-2 bg-accent text-white font-medium rounded-xl px-5 py-3 hover:bg-accent/90 active:scale-[0.97] transition-all duration-150 disabled:opacity-50 cursor-pointer"
+                    >
+                      {saving ? (
+                        <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Check className="w-4 h-4" aria-hidden="true" />
+                      )}
+                      I have a GitHub account — Mark Complete
+                    </button>
+                  </div>
+                )}
+
                 {/* Completed state for any step */}
                 {isComplete && (
                   <div className="flex items-center gap-2 text-accent text-sm">
@@ -637,10 +732,10 @@ export default function WizardPlaceholder() {
           );
         })}
 
-        {/* Step 4: GitHub & Discord — always visible after first 3 steps */}
+        {/* Usernames — only after all 5 steps completed */}
         <div
           className={`rounded-2xl border transition-all duration-200 ${
-            allThreeDone ? "border-accent/40 bg-muted/80" : "border-border/60 bg-muted/20 opacity-50"
+            allFiveDone ? "border-accent/40 bg-muted/80" : "border-border/60 bg-muted/20 opacity-50"
           }`}
         >
           <div className="flex items-center gap-4 p-5">
@@ -648,7 +743,7 @@ export default function WizardPlaceholder() {
               className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center shrink-0 ${
                 githubDiscordDone
                   ? "bg-accent/15 border-accent text-accent"
-                  : allThreeDone
+                  : allFiveDone
                     ? "bg-background border-accent/50 text-accent"
                     : "bg-background border-border text-foreground/40"
               }`}
@@ -656,7 +751,7 @@ export default function WizardPlaceholder() {
               {githubDiscordDone ? (
                 <Check className="w-5 h-5" aria-hidden="true" />
               ) : (
-                <span className="font-heading text-sm">4</span>
+                <span className="font-heading text-sm">6</span>
               )}
             </div>
             <div className="flex-1 min-w-0">
@@ -664,12 +759,12 @@ export default function WizardPlaceholder() {
                 className={`font-medium ${
                   githubDiscordDone
                     ? "text-accent"
-                    : allThreeDone
+                    : allFiveDone
                       ? "text-foreground"
                       : "text-foreground/50"
                 }`}
               >
-                GitHub & Discord
+                Share Your Usernames
                 {githubDiscordDone && (
                   <span className="ml-2 text-xs text-accent/70 font-normal">
                     Complete
@@ -679,7 +774,7 @@ export default function WizardPlaceholder() {
             </div>
           </div>
 
-          {allThreeDone && !githubDiscordDone && (
+          {allFiveDone && !githubDiscordDone && (
             <div className="px-5 pb-5 pt-0 border-t border-border/40">
               <div className="mt-3 space-y-3">
                 <p className="text-sm text-foreground/70 leading-relaxed">
@@ -779,10 +874,10 @@ export default function WizardPlaceholder() {
             </div>
           )}
 
-          {!allThreeDone && (
+          {!allFiveDone && (
             <div className="px-5 pb-5 pt-0 border-t border-border/40">
               <p className="text-sm text-foreground/40 mt-3">
-                Complete steps 1–3 above first, then enter your GitHub and Discord
+                Complete steps 1–5 above first, then enter your GitHub and Discord
                 usernames here.
               </p>
             </div>
