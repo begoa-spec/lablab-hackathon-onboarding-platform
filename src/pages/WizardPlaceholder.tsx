@@ -99,18 +99,19 @@ const STEPS: StepDef[] = [
   {
     key: "discord",
     label: "Join the team Discord server",
-    description: "Join the official hackathon Discord server to communicate with your team and get updates from the organizers.",
+    description: "Join the official hackathon Discord server. Your team channel will be created automatically when your team is approved.",
     href: DISCORD_INVITE_URL,
     hrefLabel: "Join Discord →",
   },
   {
     key: "github",
-    label: "Set up your GitHub account",
-    description: "Create a GitHub account (or sign in) so your team can collaborate on code and the organizer can add you to your team's repo.",
-    href: "https://github.com/signup",
-    hrefLabel: "Create GitHub account →",
-    href2: "https://github.com/login",
-    hrefLabel2: "Sign in to GitHub →",
+    label: "Join team GitHub repository",
+    description: "Access your team's GitHub repository to collaborate on code with your teammates.",
+    support: {
+      href: "https://docs.github.com/en/collaborating-with-issues-and-pull-requests",
+      label: "Learn about GitHub collaboration →",
+      note: "Need help using GitHub?",
+    },
   },
 ];
 

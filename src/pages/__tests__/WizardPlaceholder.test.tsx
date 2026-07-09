@@ -10,7 +10,7 @@ const EXPECTED_STEP_LABELS = [
   "Create a Natively AI account",
   "Join the lablab Discord for mentor support",
   "Join the team Discord server",
-  "Set up your GitHub account",
+  "Join team GitHub repository",
 ];
 
 const EXPECTED_STEP_KEYS = [
