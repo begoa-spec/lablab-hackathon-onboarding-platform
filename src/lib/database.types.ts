@@ -248,6 +248,8 @@ export type Database = {
           hackathon_id: string
           id: string
           is_approved: boolean
+          mentor_discord_username: string | null
+          mentor_name: string | null
           name: string
         }
         Insert: {
@@ -257,6 +259,8 @@ export type Database = {
           hackathon_id: string
           id?: string
           is_approved?: boolean
+          mentor_discord_username?: string | null
+          mentor_name?: string | null
           name: string
         }
         Update: {
@@ -266,6 +270,8 @@ export type Database = {
           hackathon_id?: string
           id?: string
           is_approved?: boolean
+          mentor_discord_username?: string | null
+          mentor_name?: string | null
           name?: string
         }
         Relationships: [

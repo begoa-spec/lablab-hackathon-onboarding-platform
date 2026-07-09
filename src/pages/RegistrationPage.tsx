@@ -13,7 +13,6 @@ import {
   Sparkles,
   UserPlus,
   ShieldCheck,
-  ExternalLink,
   AlertCircle,
   LogOut,
 } from "lucide-react";
@@ -159,6 +158,7 @@ export default function RegistrationPage() {
       if (chosenRole === "organizer") {
         setStep("confirming");
       } else {
+        // For participants, they need to select/create a team first
         setStep("team");
       }
     },
@@ -177,6 +177,29 @@ export default function RegistrationPage() {
     if (!newTeamName.trim() || !selectedHackathon) return;
     setSubmitting(true);
     setError(null);
+
+    // Check if user already has a team in this hackathon
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.user) {
+      setError("Session expired. Please sign in again.");
+      setSubmitting(false);
+      return;
+    }
+
+    const { data: existingParticipant } = await supabase
+      .from("participants")
+      .select("team_id")
+      .eq("auth_user_id", session.user.id)
+      .eq("hackathon_id", selectedHackathon.id)
+      .maybeSingle();
+
+    if (existingParticipant?.team_id) {
+      setError("You already have a team in this hackathon. You can only be in one team at a time.");
+      setSubmitting(false);
+      return;
+    }
 
     const { data, error: createError } = await supabase
       .from("teams")
@@ -313,6 +336,10 @@ export default function RegistrationPage() {
           return;
         }
 
+        // Get GitHub and Discord usernames from user metadata (set during account creation)
+        const githubUsername = session.user.user_metadata?.github_username || null;
+        const discordUsername = session.user.user_metadata?.discord_username || null;
+
         const { error: participantError } = await supabase
           .from("participants")
           .upsert(
@@ -322,6 +349,8 @@ export default function RegistrationPage() {
               name: email.split("@")[0], // Use email prefix as name
               hackathon_id: selectedHackathon.id,
               team_id: selectedTeam.id,
+              github_username: githubUsername,
+              discord_username: discordUsername,
             },
             { onConflict: "auth_user_id" }
           );
@@ -674,6 +703,7 @@ export default function RegistrationPage() {
           </div>
         )}
 
+
         {/* ─── Step: Confirming / Submitting ────────── */}
         {step === "confirming" && selectedHackathon && (
           <div className="bg-muted border border-border rounded-2xl p-6">
@@ -703,6 +733,22 @@ export default function RegistrationPage() {
                   </span>
                 </div>
               )}
+              {chosenRole === "participant" && githubUsername && (
+                <div className="flex items-center justify-between py-2 border-b border-border/40">
+                  <span className="text-xs text-foreground/50 uppercase tracking-wider">GitHub</span>
+                  <span className="text-sm text-foreground font-mono">
+                    {githubUsername}
+                  </span>
+                </div>
+              )}
+              {chosenRole === "participant" && discordUsername && (
+                <div className="flex items-center justify-between py-2 border-b border-border/40">
+                  <span className="text-xs text-foreground/50 uppercase tracking-wider">Discord</span>
+                  <span className="text-sm text-foreground font-mono">
+                    {discordUsername}
+                  </span>
+                </div>
+              )}
             </div>
 
             {error && (
@@ -719,7 +765,7 @@ export default function RegistrationPage() {
               <button
                 type="button"
                 onClick={() =>
-                  setStep(chosenRole === "organizer" ? "hackathon" : "team")
+                  setStep(chosenRole === "organizer" ? "hackathon" : "profile")
                 }
                 disabled={submitting}
                 className="flex-1 px-4 py-2.5 rounded-xl border border-border text-sm text-foreground/70 hover:bg-muted transition-all duration-150 disabled:opacity-50 cursor-pointer"

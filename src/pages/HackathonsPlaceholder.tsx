@@ -127,6 +127,30 @@ function HackathonFormModal({
 
     setSaving(true);
 
+    // For new hackathons, verify user is an organizer
+    if (!isEdit) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.user) {
+        setError("You must be signed in to create a hackathon");
+        setSaving(false);
+        return;
+      }
+
+      const { data: organizer } = await supabase
+        .from("organizers")
+        .select("id")
+        .eq("auth_user_id", session.user.id)
+        .maybeSingle();
+
+      if (!organizer) {
+        setError("Only organizers can create hackathons. Please sign in as an organizer.");
+        setSaving(false);
+        return;
+      }
+    }
+
     const hackData: TablesInsert<"hackathons"> = {
       name: name.trim(),
       slug: slug.trim().toLowerCase(),
