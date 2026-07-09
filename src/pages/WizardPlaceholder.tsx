@@ -55,22 +55,22 @@ type ReportTarget = {
 const STEPS: StepDef[] = [
   {
     key: "amd",
-    label: "Sign up for AMD Cloud",
-    description: "Create an AMD Cloud account to access accelerated compute for your hackathon project.",
-    href: "https://amdcloud.amd.com/",
-    hrefLabel: "Go to AMD Cloud →",
+    label: "Sign up for AMD AI Developer Program",
+    description: "Create an AMD Developer Program account to access accelerated compute for your hackathon project.",
+    href: "https://developer.amd.com/ai-developer-program/",
+    hrefLabel: "Go to AMD Developer Program →",
     support: {
-      href: "https://cloudsupport.digitalocean.com/s/?teamId=001QP00001dnlA6YAI",
-      label: "Open AMD Cloud support ticket →",
+      href: "https://account.amd.com/en/member/ai-dev-program/cloud-credits.html",
+      label: "Request cloud credits →",
       note: "Credits not showing up in your account?",
     },
   },
   {
     key: "fireworks",
     label: "Claim your Fireworks promo code",
-    description: "Visit AMD DevCloud, request a Fireworks promo code, and check your email. You'll use the promo code to claim your credits.",
-    href: "https://devcloud.amd.com/",
-    hrefLabel: "Go to AMD DevCloud →",
+    description: "Sign up for Fireworks.ai and use your promo code to claim credits for your hackathon project.",
+    href: "https://app.fireworks.ai/signup",
+    hrefLabel: "Go to Fireworks.ai →",
     support: {
       href: "https://fireworks.ai/contact",
       label: "Contact Fireworks.ai support →",
@@ -81,7 +81,7 @@ const STEPS: StepDef[] = [
     key: "natively_ai",
     label: "Create a Natively AI account",
     description: "Sign up for a Natively AI account to deploy and manage your AI pipelines.",
-    href: "https://natively.ai/",
+    href: "https://beta.nativelyai.com/?utm_source=partner_site&utm_medium=partner&utm_campaign=amd_builder_hackathon_2026_07&utm_content=lablab_amd_hackathon",
     hrefLabel: "Go to Natively AI →",
     support: {
       href: "https://discord.com/invite/uP2TQVtkRj",

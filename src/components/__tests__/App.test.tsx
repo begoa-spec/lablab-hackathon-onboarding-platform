@@ -4,6 +4,16 @@ import { MemoryRouter, Outlet } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
+// Mock supabase to avoid environment variable errors
+vi.mock("../../lib/supabase", () => ({
+  supabase: {
+    auth: {
+      getSession: vi.fn(),
+      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+    },
+  },
+}));
+
 // Mock useAuth
 const mockUseAuth = vi.fn();
 vi.mock("../../hooks/useAuth", () => ({

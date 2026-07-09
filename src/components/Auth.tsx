@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { APP_NAME, APP_TAGLINE } from "../lib/config";
-import { Loader2, Users, ShieldCheck } from "lucide-react";
-import { SiGithub } from "react-icons/si";
+import { Loader2, Users, ShieldCheck, Check } from "lucide-react";
+import { SiGithub, SiDiscord } from "react-icons/si";
 
-type AuthView = "signin" | "signup";
+type AuthView = "signin" | "signup" | "link_accounts";
 type AuthRole = "participant" | "organizer";
 
 export default function Auth() {
@@ -17,6 +17,9 @@ export default function Auth() {
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [githubUsername, setGithubUsername] = useState("");
+  const [discordUsername, setDiscordUsername] = useState("");
+  const [linkingLoading, setLinkingLoading] = useState(false);
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
@@ -69,7 +72,11 @@ export default function Auth() {
 
     if (error) {
       setMessage({ type: "error", text: error.message });
-    } else if (data?.user && !data?.session) {
+      setLoading(false);
+      return;
+    }
+
+    if (data?.user && !data?.session) {
       // User already exists but isn't logged in (or confirmation required)
       setMessage({
         type: "success",
@@ -79,7 +86,11 @@ export default function Auth() {
             : "Check your email for a confirmation link to complete sign up.",
       });
       setView("signin");
-    } else if (data?.user && data?.session) {
+      setLoading(false);
+      return;
+    }
+
+    if (data?.user && data?.session) {
       // No email confirmation needed — session was created immediately
       if (role === "organizer") {
         await supabase.from("organizers").upsert(
@@ -89,8 +100,9 @@ export default function Auth() {
       }
       setMessage({
         type: "success",
-        text: "Account created! Welcome aboard.",
+        text: "Account created! Please link your GitHub and Discord accounts to continue.",
       });
+      setView("link_accounts");
     }
     setLoading(false);
   }
@@ -117,6 +129,53 @@ export default function Auth() {
       setLoading(false);
     }
     // OAuth redirects away — no need to set loading false
+  }
+
+  async function handleLinkAccounts(e: React.FormEvent) {
+    e.preventDefault();
+    if (!githubUsername.trim() || !discordUsername.trim()) {
+      setMessage({ type: "error", text: "Please enter both GitHub and Discord usernames." });
+      return;
+    }
+
+    setLinkingLoading(true);
+    setMessage(null);
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.user) {
+      setMessage({ type: "error", text: "Session expired. Please sign in again." });
+      setLinkingLoading(false);
+      return;
+    }
+
+    // Update user metadata with GitHub and Discord usernames
+    const { error: updateError } = await supabase.auth.updateUser({
+      data: {
+        user_metadata: {
+          github_username: githubUsername.trim(),
+          discord_username: discordUsername.trim(),
+        },
+      },
+    });
+
+    if (updateError) {
+      setMessage({ type: "error", text: updateError.message });
+      setLinkingLoading(false);
+      return;
+    }
+
+    setMessage({
+      type: "success",
+      text: "Accounts linked successfully! You can now register for a hackathon.",
+    });
+    setLinkingLoading(false);
+    
+    // Redirect to registration after a short delay
+    setTimeout(() => {
+      window.location.href = "/register";
+    }, 1500);
   }
 
   function toggleRole() {
@@ -302,6 +361,90 @@ export default function Auth() {
             </button>
           </div>
         </div>
+
+        {/* ─── Link Accounts View ───────────────────── */}
+        {view === "link_accounts" && (
+          <div className="w-full max-w-sm mt-6">
+            <div className="bg-muted border border-border rounded-2xl p-6">
+              <h2 className="font-heading text-lg text-foreground tracking-wider uppercase mb-2 text-center">
+                Link Your Accounts
+              </h2>
+              <p className="text-foreground/60 text-sm text-center mb-6">
+                Connect your GitHub and Discord accounts to participate in hackathons
+              </p>
+
+              {message && (
+                <div
+                  role="alert"
+                  className={`mb-4 px-4 py-3 rounded-xl text-sm ${
+                    message.type === "success"
+                      ? "bg-accent/10 text-accent border border-accent/20"
+                      : "bg-destructive/10 text-destructive border border-destructive/20"
+                  }`}
+                >
+                  {message.text}
+                </div>
+              )}
+
+              <form onSubmit={handleLinkAccounts} className="space-y-4">
+                <div>
+                  <label htmlFor="link-github" className="sr-only">
+                    GitHub Username
+                  </label>
+                  <div className="relative">
+                    <SiGithub
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/30"
+                      aria-hidden="true"
+                    />
+                    <input
+                      id="link-github"
+                      type="text"
+                      value={githubUsername}
+                      onChange={(e) => setGithubUsername(e.target.value)}
+                      placeholder="GitHub username"
+                      required
+                      className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-xl text-foreground placeholder-foreground/40 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/50 transition-all duration-150"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="link-discord" className="sr-only">
+                    Discord Username
+                  </label>
+                  <div className="relative">
+                    <SiDiscord
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/30"
+                      aria-hidden="true"
+                    />
+                    <input
+                      id="link-discord"
+                      type="text"
+                      value={discordUsername}
+                      onChange={(e) => setDiscordUsername(e.target.value)}
+                      placeholder="Discord username"
+                      required
+                      className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-xl text-foreground placeholder-foreground/40 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/50 transition-all duration-150"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={linkingLoading || !githubUsername.trim() || !discordUsername.trim()}
+                  className="w-full py-3 bg-accent text-black font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {linkingLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Check className="w-4 h-4" aria-hidden="true" />
+                  )}
+                  Link Accounts & Continue
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
 
         <p className="mt-6 text-center text-xs text-foreground/40">
           {role === "organizer"

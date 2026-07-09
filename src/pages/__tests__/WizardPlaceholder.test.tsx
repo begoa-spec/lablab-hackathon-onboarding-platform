@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 /* ── Current step labels (must match STEPS in WizardPlaceholder) ── */
 const EXPECTED_STEP_LABELS = [
-  "Sign up for AMD Cloud",
+  "Sign up for AMD AI Developer Program",
   "Claim your Fireworks promo code",
   "Create a Natively AI account",
   "Join the lablab Discord for mentor support",
@@ -300,10 +300,11 @@ describe("WizardPlaceholder — step order", () => {
     renderWizard(Wizard);
 
     for (const label of EXPECTED_STEP_LABELS) {
+      const elements = await screen.findAllByText(label);
       expect(
-        await screen.findByText(label),
+        elements.length,
         `Missing step label: "${label}"`
-      ).toBeInTheDocument();
+      ).toBeGreaterThan(0);
     }
   });
 
