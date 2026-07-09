@@ -305,10 +305,10 @@ describe("WizardPlaceholder — step order", () => {
     renderWizard(Wizard);
 
     for (const label of EXPECTED_STEP_LABELS) {
-      expect(
-        await screen.findByText(label),
-        `Missing step label: "${label}"`,
-      ).toBeInTheDocument();
+      const stepButton = await screen.findByRole("button", {
+        name: new RegExp(label, "i"),
+      });
+      expect(stepButton, `Missing step label: "${label}"`).toBeInTheDocument();
     }
   });
 
