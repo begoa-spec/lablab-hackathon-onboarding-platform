@@ -222,7 +222,7 @@ describe("getStepsCompleted helper", () => {
 /* ── Step ordering tests ────────────────────────────── */
 
 describe("WizardPlaceholder — step order", () => {
-  it("shows all 5 step labels plus usernames section", async () => {
+  it("shows all 5 step labels", async () => {
     await setupDefaultMocks();
     renderWizard(Wizard);
 
@@ -230,9 +230,6 @@ describe("WizardPlaceholder — step order", () => {
     for (const label of EXPECTED_STEP_LABELS) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
-
-    // Usernames section should also be present
-    expect(screen.getByText("Share Your Usernames")).toBeInTheDocument();
   });
 
   it("renders step indices 1-5 on the step indicator circles", async () => {
@@ -313,7 +310,7 @@ describe("WizardPlaceholder — rendering", () => {
     expect(welcome).toBeInTheDocument();
   });
 
-  it("shows all set state when all 5 steps completed and both usernames filled", async () => {
+  it("shows all set state when all 5 steps completed", async () => {
     const participant = {
       id: "p-1",
       name: "Test User",

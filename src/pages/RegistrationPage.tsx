@@ -13,10 +13,10 @@ import {
   Sparkles,
   UserPlus,
   ShieldCheck,
-  ExternalLink,
   AlertCircle,
   LogOut,
 } from "lucide-react";
+import { SiGithub, SiDiscord } from "react-icons/si";
 
 /* ── Types ─────────────────────────────────────────── */
 
@@ -25,7 +25,7 @@ interface HackathonWithTeams extends Tables<"hackathons"> {
   teamCount: number;
 }
 
-type RegistrationStep = "role" | "hackathon" | "team" | "confirming" | "done";
+type RegistrationStep = "role" | "hackathon" | "team" | "profile" | "confirming" | "done";
 
 /* ── Helpers ────────────────────────────────────────── */
 
@@ -58,6 +58,8 @@ export default function RegistrationPage() {
     null
   );
   const [newTeamName, setNewTeamName] = useState("");
+  const [githubUsername, setGithubUsername] = useState("");
+  const [discordUsername, setDiscordUsername] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -322,6 +324,8 @@ export default function RegistrationPage() {
               name: email.split("@")[0], // Use email prefix as name
               hackathon_id: selectedHackathon.id,
               team_id: selectedTeam.id,
+              github_username: githubUsername.trim() || null,
+              discord_username: discordUsername.trim() || null,
             },
             { onConflict: "auth_user_id" }
           );
@@ -663,12 +667,105 @@ export default function RegistrationPage() {
             <div className="mt-6">
               <button
                 type="button"
-                onClick={() => setStep("confirming")}
+                onClick={() => setStep("profile")}
                 disabled={!selectedTeam || submitting}
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-accent text-white font-medium hover:bg-accent/90 active:scale-[0.97] transition-all duration-150 disabled:opacity-50 cursor-pointer"
               >
                 <ChevronRight className="w-4 h-4" aria-hidden="true" />
                 Continue with {selectedTeam?.name ?? "selected team"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ─── Step: Profile — GitHub & Discord ───── */}
+        {step === "profile" && selectedTeam && (
+          <div>
+            <div className="flex items-center gap-2 mb-6">
+              <div className="w-8 h-8 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center">
+                <SiGithub className="w-4 h-4 text-accent" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-foreground/70 text-sm font-medium">
+                  Link your accounts
+                </p>
+                <p className="text-xs text-foreground/40">
+                  So we can add you to your team's repo and Discord channel
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-muted border border-border rounded-2xl p-6 space-y-5">
+              {/* GitHub */}
+              <div>
+                <label
+                  htmlFor="reg-github-username"
+                  className="text-xs text-foreground/50 uppercase tracking-wider block mb-2"
+                >
+                  GitHub Username
+                </label>
+                <div className="relative">
+                  <SiGithub
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/30"
+                    aria-hidden="true"
+                  />
+                  <input
+                    id="reg-github-username"
+                    type="text"
+                    value={githubUsername}
+                    onChange={(e) => setGithubUsername(e.target.value)}
+                    placeholder="your-github-handle"
+                    className="w-full bg-background border border-border rounded-xl pl-10 pr-4 py-3 text-sm text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-all duration-150"
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+
+              {/* Discord */}
+              <div>
+                <label
+                  htmlFor="reg-discord-username"
+                  className="text-xs text-foreground/50 uppercase tracking-wider block mb-2"
+                >
+                  Discord Username
+                </label>
+                <div className="relative">
+                  <SiDiscord
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/30"
+                    aria-hidden="true"
+                  />
+                  <input
+                    id="reg-discord-username"
+                    type="text"
+                    value={discordUsername}
+                    onChange={(e) => setDiscordUsername(e.target.value)}
+                    placeholder="your_discord_handle"
+                    className="w-full bg-background border border-border rounded-xl pl-10 pr-4 py-3 text-sm text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-all duration-150"
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+
+              <p className="text-xs text-foreground/40 leading-relaxed">
+                You can update these later from your onboarding page if needed.
+              </p>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => setStep("team")}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-border text-sm text-foreground/70 hover:bg-muted transition-all duration-150 cursor-pointer"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={() => setStep("confirming")}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-white text-sm font-medium hover:bg-accent/90 active:scale-[0.97] transition-all duration-150 cursor-pointer"
+              >
+                <ChevronRight className="w-4 h-4" aria-hidden="true" />
+                Continue
               </button>
             </div>
           </div>
@@ -703,6 +800,22 @@ export default function RegistrationPage() {
                   </span>
                 </div>
               )}
+              {chosenRole === "participant" && githubUsername && (
+                <div className="flex items-center justify-between py-2 border-b border-border/40">
+                  <span className="text-xs text-foreground/50 uppercase tracking-wider">GitHub</span>
+                  <span className="text-sm text-foreground font-mono">
+                    {githubUsername}
+                  </span>
+                </div>
+              )}
+              {chosenRole === "participant" && discordUsername && (
+                <div className="flex items-center justify-between py-2 border-b border-border/40">
+                  <span className="text-xs text-foreground/50 uppercase tracking-wider">Discord</span>
+                  <span className="text-sm text-foreground font-mono">
+                    {discordUsername}
+                  </span>
+                </div>
+              )}
             </div>
 
             {error && (
@@ -719,7 +832,7 @@ export default function RegistrationPage() {
               <button
                 type="button"
                 onClick={() =>
-                  setStep(chosenRole === "organizer" ? "hackathon" : "team")
+                  setStep(chosenRole === "organizer" ? "hackathon" : "profile")
                 }
                 disabled={submitting}
                 className="flex-1 px-4 py-2.5 rounded-xl border border-border text-sm text-foreground/70 hover:bg-muted transition-all duration-150 disabled:opacity-50 cursor-pointer"

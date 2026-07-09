@@ -8,7 +8,6 @@ import {
   Check,
   ExternalLink,
   AlertCircle,
-  MessageSquare,
   Sparkles,
   ChevronDown,
   Mail,
@@ -208,8 +207,6 @@ export default function WizardPlaceholder() {
     discord: false,
     github: false,
   });
-  const [githubUsername, setGithubUsername] = useState("");
-  const [discordUsername, setDiscordUsername] = useState("");
   const [team, setTeam] = useState<Tables<"teams"> | null>(null);
   const [teammates, setTeammates] = useState<Tables<"participants">[]>([]);
   const [hackathonName, setHackathonName] = useState("");
@@ -234,7 +231,6 @@ export default function WizardPlaceholder() {
 
   const allFiveDone =
     steps.amd && steps.fireworks && steps.natively_ai && steps.discord && steps.github;
-  const githubDiscordDone = githubUsername.trim().length > 0 && discordUsername.trim().length > 0;
 
   // Load participant data
   useEffect(() => {
@@ -243,9 +239,6 @@ export default function WizardPlaceholder() {
     const raw = participant.steps_completed;
     const parsed = getStepsCompleted(raw);
     setSteps(parsed);
-
-    if (participant.github_username) setGithubUsername(participant.github_username);
-    if (participant.discord_username) setDiscordUsername(participant.discord_username);
 
     // Fetch team + hackathon
     if (participant.team_id) {
@@ -286,14 +279,14 @@ export default function WizardPlaceholder() {
 
   // Show completed message after all steps done AND infrastructure attempted
   useEffect(() => {
-    if (!allFiveDone || !githubDiscordDone) return;
+    if (!allFiveDone) return;
     // Either we have an infra result from a fresh attempt, or the team
     // already has infrastructure from a previous session.
     const teamHasInfra = team?.is_approved || team?.github_repo_url || team?.discord_channel_id;
     if (infraResult || teamHasInfra) {
       setCompletedMessage(true);
     }
-  }, [allFiveDone, githubDiscordDone, infraResult, team]);
+  }, [allFiveDone, infraResult, team]);
 
   /* ── Actions ──────────────────────────────────────── */
 
@@ -328,78 +321,45 @@ export default function WizardPlaceholder() {
       setSteps(updated);
       setSaving(false);
 
-      // Auto-advance to next step
-      const nextIdx = STEPS.findIndex((s) => !updated[s.key]);
-      setExpandedStep(nextIdx === -1 ? null : nextIdx);
-    },
-    [participant, steps]
-  );
+      const allDone = STEPS.every((s) => updated[s.key]);
 
-  const saveGitHubDiscord = useCallback(async () => {
-    if (!participant) return;
-    setSaving(true);
-    setSaveError("");
+      if (allDone && participant.team_id) {
+        // Trigger infrastructure creation now that all steps are complete
+        setInfraCreating(true);
+        const { data: infraResp, error: infraErr } = await supabase.functions.invoke(
+          "create-team-infrastructure",
+          { body: { team_id: participant.team_id } }
+        );
+        setInfraCreating(false);
 
-    const { error } = await supabase
-      .from("participants")
-      .update({
-        github_username: githubUsername.trim(),
-        discord_username: discordUsername.trim(),
-      })
-      .eq("id", participant.id);
+        if (infraErr || !infraResp) {
+          setInfraResult({
+            github_repo_url: null,
+            discord_channel_id: null,
+            discord_guild_id: null,
+            github_error: infraErr?.message ?? "Could not reach infrastructure service",
+            discord_error: infraErr?.message ?? "Could not reach infrastructure service",
+            status: "error",
+          });
+        } else {
+          setInfraResult(infraResp as typeof infraResult);
+        }
 
-    if (error) {
-      setSaveError("Failed to save usernames. Try again.");
-      setSaving(false);
-      return;
-    }
-
-    // Also log
-    await supabase.from("audit_logs").insert({
-      hackathon_id: participant.hackathon_id,
-      actor_id: participant.id,
-      actor_role: "participant",
-      action: "step_completed",
-      metadata: { step: "github_discord" },
-    });
-
-    setSaving(false);
-
-    // Trigger infrastructure creation for the team
-    if (participant.team_id) {
-      setInfraCreating(true);
-      const { data: infraResp, error: infraErr } = await supabase.functions.invoke(
-        "create-team-infrastructure",
-        { body: { team_id: participant.team_id } }
-      );
-      setInfraCreating(false);
-
-      if (infraErr || !infraResp) {
-        // Real error (network, function crash, etc.)
-        setInfraResult({
-          github_repo_url: null,
-          discord_channel_id: null,
-          discord_guild_id: null,
-          github_error: infraErr?.message ?? "Could not reach infrastructure service",
-          discord_error: infraErr?.message ?? "Could not reach infrastructure service",
-          status: "error",
-        });
-      } else {
-        // All business responses now come as data (status 200)
-        setInfraResult(infraResp as typeof infraResult);
-      }
-
-      // Refresh team data to get updated repo/channel info
-      if (participant.team_id) {
+        // Refresh team data
         const { data: updatedTeam } = await supabase
           .from("teams")
           .select("*")
           .eq("id", participant.team_id)
           .single();
         if (updatedTeam) setTeam(updatedTeam);
+      } else {
+        // Auto-advance to next incomplete step
+        const nextIdx = STEPS.findIndex((s) => !updated[s.key]);
+        setExpandedStep(nextIdx === -1 ? null : nextIdx);
       }
-    }
-  }, [participant, githubUsername, discordUsername]);
+    },
+    [participant, steps, infraResult]
+  );
 
   /* ── Loading ──────────────────────────────────────── */
 
@@ -636,6 +596,14 @@ export default function WizardPlaceholder() {
         </div>
       )}
 
+      {/* Infra creating banner */}
+      {infraCreating && (
+        <div className="flex items-center gap-3 bg-accent/5 border border-accent/20 rounded-xl px-4 py-3 mb-6 text-sm text-accent">
+          <Loader2 className="w-4 h-4 shrink-0 animate-spin" aria-hidden="true" />
+          Setting up your team's GitHub repo and Discord channel…
+        </div>
+      )}
+
       {/* Steps */}
       <div className="space-y-3">
         {STEPS.map((step, i) => {
@@ -831,158 +799,6 @@ export default function WizardPlaceholder() {
             </StepCard>
           );
         })}
-
-        {/* Usernames — only after all 5 steps completed */}
-        <div
-          className={`rounded-2xl border transition-all duration-200 ${
-            allFiveDone ? "border-accent/40 bg-muted/80" : "border-border/60 bg-muted/20 opacity-50"
-          }`}
-        >
-          <div className="flex items-center gap-4 p-5">
-            <div
-              className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center shrink-0 ${
-                githubDiscordDone
-                  ? "bg-accent/15 border-accent text-accent"
-                  : allFiveDone
-                    ? "bg-background border-accent/50 text-accent"
-                    : "bg-background border-border text-foreground/40"
-              }`}
-            >
-              {githubDiscordDone ? (
-                <Check className="w-5 h-5" aria-hidden="true" />
-              ) : (
-                <span className="font-heading text-sm">6</span>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3
-                className={`font-medium ${
-                  githubDiscordDone
-                    ? "text-accent"
-                    : allFiveDone
-                      ? "text-foreground"
-                      : "text-foreground/50"
-                }`}
-              >
-                Share Your Usernames
-                {githubDiscordDone && (
-                  <span className="ml-2 text-xs text-accent/70 font-normal">
-                    Complete
-                  </span>
-                )}
-              </h3>
-            </div>
-          </div>
-
-          {allFiveDone && !githubDiscordDone && (
-            <div className="px-5 pb-5 pt-0 border-t border-border/40">
-              <div className="mt-3 space-y-3">
-                <p className="text-sm text-foreground/70 leading-relaxed">
-                  Share your GitHub and Discord usernames so we can add you to
-                  your team&apos;s repo and communication channel.
-                </p>
-
-                {/* GitHub username */}
-                <div>
-                  <label
-                    htmlFor="github-username"
-                    className="text-xs text-foreground/50 uppercase tracking-wider block mb-1.5"
-                  >
-                    GitHub Username
-                  </label>
-                  <div className="relative">
-                    <SiGithub
-                      className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/30"
-                      aria-hidden="true"
-                    />
-                    <input
-                      id="github-username"
-                      type="text"
-                      value={githubUsername}
-                      onChange={(e) => setGithubUsername(e.target.value)}
-                      placeholder="your-github-handle"
-                      className="w-full bg-background border border-border rounded-xl pl-10 pr-4 py-3 text-sm text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-all duration-150"
-                    />
-                  </div>
-                </div>
-
-                {/* Discord username */}
-                <div>
-                  <label
-                    htmlFor="discord-username"
-                    className="text-xs text-foreground/50 uppercase tracking-wider block mb-1.5"
-                  >
-                    Discord Username
-                  </label>
-                  <div className="relative">
-                    <SiDiscord
-                      className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/30"
-                      aria-hidden="true"
-                    />
-                    <input
-                      id="discord-username"
-                      type="text"
-                      value={discordUsername}
-                      onChange={(e) => setDiscordUsername(e.target.value)}
-                      placeholder="your_discord_handle"
-                      className="w-full bg-background border border-border rounded-xl pl-10 pr-4 py-3 text-sm text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-all duration-150"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={saveGitHubDiscord}
-                  disabled={
-                    saving ||
-                    !githubUsername.trim() ||
-                    !discordUsername.trim()
-                  }
-                  className="w-full flex items-center justify-center gap-2 bg-accent text-white font-medium rounded-xl px-5 py-3 hover:bg-accent/90 active:scale-[0.97] transition-all duration-150 disabled:opacity-50 cursor-pointer"
-                >
-                  {saving ? (
-                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-                  ) : (
-                    <Check className="w-4 h-4" aria-hidden="true" />
-                  )}
-                  Save & Finish
-                </button>
-              </div>
-            </div>
-          )}
-
-          {githubDiscordDone && (
-            <div className="px-5 pb-5 pt-0 border-t border-border/40">
-              <div className="mt-3 space-y-3">
-                <div className="flex items-center gap-2 text-accent text-sm">
-                  <Check className="w-4 h-4" aria-hidden="true" />
-                  <span>Usernames saved</span>
-                </div>
-                {githubUsername && (
-                  <div className="flex items-center gap-2 text-sm text-foreground/70">
-                    <SiGithub className="w-4 h-4 text-foreground/40" aria-hidden="true" />
-                    <span className="font-mono">{githubUsername}</span>
-                  </div>
-                )}
-                {discordUsername && (
-                  <div className="flex items-center gap-2 text-sm text-foreground/70">
-                    <MessageSquare className="w-4 h-4 text-foreground/40" aria-hidden="true" />
-                    <span className="font-mono">{discordUsername}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {!allFiveDone && (
-            <div className="px-5 pb-5 pt-0 border-t border-border/40">
-              <p className="text-sm text-foreground/40 mt-3">
-                Complete steps 1–5 above first, then enter your GitHub and Discord
-                usernames here.
-              </p>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );
