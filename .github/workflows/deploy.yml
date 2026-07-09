@@ -9,6 +9,7 @@ env:
   VERCEL_ORG_ID: ${{ secrets.VERCEL_TEAM_ID }}
   VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
 jobs:
   deploy:
@@ -34,18 +35,21 @@ jobs:
       - name: Run unit tests
         run: npm test
 
+      - name: Skip Vercel deployment for PRs or missing secrets
+        if: github.event_name != 'push' || github.ref != 'refs/heads/main' || env.VERCEL_TOKEN == ''
+        run: echo "Skipping Vercel deployment because this is not a production push or the required secrets are missing."
+
       - name: Install Vercel CLI
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.VERCEL_TOKEN != ''
         run: npm install --global vercel@latest
 
       - name: Debug — check VERCEL_TOKEN availability
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.VERCEL_TOKEN != ''
         run: |
-          if [ -z "${{ secrets.VERCEL_TOKEN }}" ]; then
-            echo "⚠️ VERCEL_TOKEN secret is EMPTY or MISSING"
-          else
-            echo "✅ VERCEL_TOKEN secret is set (length: ${#token})"
-          fi
+          echo "✅ VERCEL_TOKEN secret is set"
 
       - name: Pull Vercel environment info
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.VERCEL_TOKEN != ''
         run: |
           vercel pull \
             --yes \
@@ -54,22 +58,24 @@ jobs:
             --scope="${{ env.VERCEL_TEAM_ID }}"
 
       - name: Build project artifacts
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.VERCEL_TOKEN != ''
         run: |
           vercel build \
-            ${{ github.ref == 'refs/heads/main' && '--prod' || '' }} \
+            --prod \
             --token="${{ secrets.VERCEL_TOKEN }}"
 
       - name: Deploy to Vercel
         id: deploy
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.VERCEL_TOKEN != ''
         run: |
           URL=$(vercel deploy \
             --prebuilt \
-            ${{ github.ref == 'refs/heads/main' && '--prod' || '' }} \
+            --prod \
             --token="${{ secrets.VERCEL_TOKEN }}")
           echo "url=$URL" >> $GITHUB_OUTPUT
 
       - name: Comment preview URL on PR
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && steps.deploy.outputs.url != ''
         uses: actions/github-script@v7
         with:
           script: |
