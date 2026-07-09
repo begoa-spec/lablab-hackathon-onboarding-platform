@@ -428,9 +428,13 @@ export default function WizardPlaceholder() {
   /* ── All done state ─────────────────────────────── */
 
   if (completedMessage) {
-    const infraSuccess = infraResult?.status === "complete" || infraResult?.status === "partial";
     const teamHasRepo = team?.github_repo_url || infraResult?.github_repo_url;
     const teamHasChannel = team?.discord_channel_id || infraResult?.discord_channel_id;
+    const infraSuccess =
+      infraResult?.status === "complete" ||
+      infraResult?.status === "partial" ||
+      Boolean(teamHasRepo) ||
+      Boolean(teamHasChannel);
     const waitingForTeammates = infraResult?.status === "incomplete";
 
     return (
